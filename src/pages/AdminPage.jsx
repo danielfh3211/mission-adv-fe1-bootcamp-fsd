@@ -1,59 +1,105 @@
 import React, { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import {
+  getProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+} from "../services/api/api";
 
 const placeholderImage = "https://picsum.photos/600/400";
-const LOCAL_KEY = "products";
 
 export default function AdminPage() {
-  const [products, setProducts] = useState(() => {
-    const stored = localStorage.getItem(LOCAL_KEY);
-    return stored ? JSON.parse(stored) : [];
-  });
-
+  const [products, setProducts] = useState([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [editId, setEditId] = useState(null);
+  const [formError, setFormError] = useState("");
+  const [notif, setNotif] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem(LOCAL_KEY, JSON.stringify(products));
-  }, [products]);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const data = await getProducts();
+        setProducts(data);
+      } catch (err) {
+        console.error("Gagal mengambil data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
-  const handleSubmit = (e) => {
+  // 🔹 Tambah / Update
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim() || !price.trim()) return;
+    setFormError("");
+    setNotif("");
 
-    if (editId) {
-      setProducts(
-        products.map((p) =>
-          p.id === editId ? { ...p, name, price: Number(price) } : p
-        )
-      );
-      setEditId(null);
-    } else {
-      setProducts([
-        ...products,
-        {
-          id: Date.now(),
+    if (!name.trim()) {
+      setFormError("Nama produk wajib diisi.");
+      return;
+    }
+    if (!price.trim() || isNaN(price) || Number(price) <= 0) {
+      setFormError("Harga produk harus berupa angka dan lebih dari 0.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      if (editId) {
+        const updated = await updateProduct(editId, {
+          name,
+          price: Number(price),
+        });
+        setProducts(products.map((p) => (p.id === editId ? updated : p)));
+        setNotif("Produk berhasil diupdate!");
+        setEditId(null);
+      } else {
+        const newProduct = await createProduct({
           name,
           price: Number(price),
           image: `https://picsum.photos/seed/${Date.now()}/600/400`,
-        },
-      ]);
+        });
+        setProducts([...products, newProduct]);
+        setNotif("Produk berhasil ditambahkan!");
+      }
+      setName("");
+      setPrice("");
+    } catch (err) {
+      setFormError("Terjadi kesalahan saat menyimpan data.");
+      console.error("Error simpan data:", err);
+    } finally {
+      setLoading(false);
     }
-    setName("");
-    setPrice("");
   };
 
+  // 🔹 Edit
   const handleEdit = (product) => {
     setEditId(product.id);
     setName(product.name);
     setPrice(String(product.price));
   };
 
-  const handleDelete = (id) => {
+  // 🔹 Hapus
+  const handleDelete = async (id) => {
+    setNotif("");
     if (window.confirm("Hapus produk ini?")) {
-      setProducts(products.filter((p) => p.id !== id));
+      try {
+        setLoading(true);
+        await deleteProduct(id);
+        setProducts(products.filter((p) => p.id !== id));
+        setNotif("Produk berhasil dihapus!");
+      } catch (err) {
+        setFormError("Gagal menghapus produk.");
+        console.error("Gagal hapus data:", err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -67,8 +113,11 @@ export default function AdminPage() {
             <p>Tambah, edit, atau hapus produk kursus Anda.</p>
           </div>
 
+          {/* Form */}
           <div className="admin-form-container">
             <h2>{editId ? "Edit Produk" : "Tambah Produk Baru"}</h2>
+            {formError && <div className="alert alert-error">{formError}</div>}
+            {notif && <div className="alert alert-success">{notif}</div>}
             <form onSubmit={handleSubmit} className="admin-form">
               <div className="admin-form-group">
                 <label>Nama Produk</label>
@@ -109,8 +158,13 @@ export default function AdminPage() {
             </form>
           </div>
 
+          {/* Produk */}
           <div className="product-grid">
-            {products.length > 0 ? (
+            {loading ? (
+              <div className="product-loading">
+                <p>Loading data produk...</p>
+              </div>
+            ) : products.length > 0 ? (
               products.map((product) => (
                 <div key={product.id} className="product-card">
                   <img

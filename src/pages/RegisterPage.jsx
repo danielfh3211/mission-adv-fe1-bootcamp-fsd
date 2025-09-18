@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import HeaderAuth from "../components/HeaderAuth";
 import { Link } from "react-router-dom";
-import Logo from "../assets/Logo.png";
 
 const RegisterPage = () => {
   const [name, setName] = useState("");

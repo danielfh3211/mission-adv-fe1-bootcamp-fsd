@@ -2,51 +2,35 @@ import React, { useEffect, useState } from "react";
 import Header from "../components/Header";
 import Card from "../components/Card";
 import Footer from "../components/Footer";
+import { getProducts } from "../services/api/api";
 import Image1 from "../assets/image1.jpg";
 import Image2 from "../assets/image2.jpg";
-import Image3 from "../assets/image3.jpg";
-import Image4 from "../assets/image4.jpg";
-import Image5 from "../assets/image5.jpg";
-import Image6 from "../assets/image6.jpg";
-import Image7 from "../assets/image7.jpg";
-import Image8 from "../assets/image8.jpg";
 import Avatar1 from "../assets/1.png";
-import Avatar2 from "../assets/2.png";
-import Avatar3 from "../assets/3.png";
-import Avatar4 from "../assets/4.png";
-import Avatar5 from "../assets/5.png";
-import Avatar6 from "../assets/6.png";
 
-const cards = [
-  { img: Image3, avatar: Avatar1 },
-  { img: Image4, avatar: Avatar2 },
-  { img: Image5, avatar: Avatar3 },
-  { img: Image6, avatar: Avatar4 },
-  { img: Image7, avatar: Avatar5 },
-  { img: Image8, avatar: Avatar6 },
-];
-
-const cardProps = {
-  title: "Big 4 Auditor Financial Analyst",
-  desc: "Mulai transformasi dengan instruktur profesional, harga yang terjangkau, dan...",
-  name: "Jenna Ortega",
-  role: "Senior Accountant di Gojek",
-  rating: "3.5 (86)",
-  price: "Rp 300K",
-};
-
-const defaultDesc = "Kursus online dengan materi menarik dan harga terjangkau.";
-const defaultName = "Instruktur Vidiobelajar";
-const defaultRole = "Instruktur Profesional";
+const defaultDesc =
+  "Mulai transformasi dengan instruktur profesional, harga yang terjangkau, dan...";
+const defaultName = "Jenna Ortega";
+const defaultRole = "Senior Accountant di Gojek";
 const defaultRating = "4.5 (100)";
 const defaultAvatar = Avatar1;
 
 const BerandaPage = () => {
   const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("products");
-    setProducts(stored ? JSON.parse(stored) : []);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const data = await getProducts();
+        setProducts(data);
+      } catch (err) {
+        console.error("Gagal mengambil produk:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   return (
@@ -89,31 +73,34 @@ const BerandaPage = () => {
         </section>
 
         <section className="card-grid">
-          {/* Card dummy lama */}
-          {cards.map((card, idx) => (
-            <Card
-              key={`dummy-${idx}`}
-              img={card.img}
-              avatar={card.avatar}
-              {...cardProps}
-            />
-          ))}
-
-          {products.map((product) => (
-            <Card
-              key={`produk-${product.id}`}
-              img={product.image}
-              title={product.name}
-              desc={defaultDesc}
-              name={defaultName}
-              role={defaultRole}
-              rating={defaultRating}
-              price={`Rp ${new Intl.NumberFormat("id-ID").format(
-                product.price
-              )}`}
-              avatar={defaultAvatar}
-            />
-          ))}
+          {loading ? (
+            <div className="product-loading">
+              <p>Loading data produk...</p>
+            </div>
+          ) : products.length > 0 ? (
+            products.map((product) => (
+              <Card
+                key={`produk-${product.id}`}
+                img={product.image}
+                title={product.name}
+                desc={product.desc || defaultDesc}
+                name={product.instructor || defaultName}
+                role={product.role || defaultRole}
+                rating={product.rating || defaultRating}
+                price={`Rp ${new Intl.NumberFormat("id-ID").format(
+                  product.price
+                )}`}
+                avatar={product.avatar || defaultAvatar}
+              />
+            ))
+          ) : (
+            <div className="product-empty">
+              <p className="font-semibold">Belum ada produk</p>
+              <p className="text-sm">
+                Produk akan tampil di sini setelah ditambahkan oleh admin.
+              </p>
+            </div>
+          )}
         </section>
 
         <section className="hero hero-secondary">
